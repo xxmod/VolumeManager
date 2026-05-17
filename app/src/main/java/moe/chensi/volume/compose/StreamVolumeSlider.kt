@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.media.AudioManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -80,6 +81,7 @@ fun StreamVolumeSlider(
     icon: ImageVector,
     name: String,
     audioManager: AudioManager,
+    footer: (@Composable () -> Unit)? = null,
     onChange: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -103,39 +105,56 @@ fun StreamVolumeSlider(
         volume = audioManager.getStreamVolume(streamType)
     }
 
-    TrackSlider(
-        cornerRadius = 20.dp,
-        value = volume.toFloat(),
-        valueRange = 0f..maxVolume,
-        onValueChange = { value ->
-            volume = value.toInt()
-            audioManager.setStreamVolume(streamType, value.toInt(), 0)
-            onChange?.invoke()
-        },
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(12.dp, 8.dp)
+        TrackSlider(
+            modifier = Modifier.weight(1f),
+            cornerRadius = 20.dp,
+            value = volume.toFloat(),
+            valueRange = 0f..maxVolume,
+            onValueChange = { value ->
+                val target = value.toInt()
+                if (volume == target) {
+                    return@TrackSlider
+                }
+
+                volume = target
+                audioManager.setStreamVolume(streamType, target, 0)
+                onChange?.invoke()
+            },
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = name,
-                modifier = Modifier.size(32.dp),
-            )
-
-            Text(
-                text = name,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Text(
-                text = "$volume/${maxVolume.toInt()}",
-                style = Typography.bodySmall,
-                maxLines = 1,
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(16.dp, 8.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = name,
+                    modifier = Modifier.size(32.dp),
+                )
+                StreamSliderTextContent(name = name, valueText = "$volume/${maxVolume.toInt()}")
+            }
         }
+
+        footer?.invoke()
     }
+}
+
+@Composable
+internal fun RowScope.StreamSliderTextContent(name: String, valueText: String) {
+    Text(
+        text = name,
+        modifier = Modifier.weight(1f),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+
+    Text(
+        text = valueText,
+        style = Typography.bodySmall,
+        maxLines = 1,
+    )
 }
