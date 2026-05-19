@@ -357,6 +357,11 @@ class Service : AccessibilityService() {
             return false
         }
 
+        // Ignore if volume key interception is disabled
+        if (!manager.interceptVolumeKeys) {
+            return false
+        }
+
         // Check foreground task ignorance list
         val task = activityTaskManager.getForegroundTask()
         Log.i(TAG, "onKeyEvent foreground task: $task")

@@ -21,7 +21,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BugReport
@@ -33,8 +35,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TooltipAnchorPosition
@@ -340,6 +344,11 @@ class MainActivity : ComponentActivity() {
                                                 onSliderVisibilityChange = manager::setSystemSliderVisible,
                                             )
                                         }
+                                        if (showAll) {
+                                            item("settings_intercept_volume_keys") {
+                                                SettingsSection(manager = manager)
+                                            }
+                                        }
                                     })
                             }
                         }
@@ -420,6 +429,37 @@ class MainActivity : ComponentActivity() {
             Button(onClick = { openBatterySettings() }) {
                 Text(text = "Disable battery optimization")
             }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSection(manager: Manager) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.settings_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp)
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.settings_intercept_volume_keys),
+                modifier = Modifier.weight(1f)
+            )
+            Switch(
+                checked = manager.interceptVolumeKeys,
+                onCheckedChange = { manager.setInterceptVolumeKeys(it) }
+            )
         }
     }
 }

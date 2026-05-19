@@ -23,7 +23,8 @@ class AppPreferencesStore(private val dataStore: DataStore<Preferences>) {
     private data class SerializedState(
         val values: MutableList<AppPreferences>,
         val indices: MutableMap<String, Int>,
-        val systemSliderVisibility: MutableMap<String, Boolean> = mutableMapOf()
+        val systemSliderVisibility: MutableMap<String, Boolean> = mutableMapOf(),
+        val interceptVolumeKeys: Boolean = true
     )
 
     private val lock = Any()
@@ -63,6 +64,23 @@ class AppPreferencesStore(private val dataStore: DataStore<Preferences>) {
                 }
 
                 state = state.copy(systemSliderVisibility = value.toMutableMap())
+                true
+            }
+
+            if (changed) {
+                save()
+            }
+        }
+
+    var interceptVolumeKeys: Boolean
+        get() = synchronized(lock) { state.interceptVolumeKeys }
+        set(value) {
+            val changed = synchronized(lock) {
+                if (state.interceptVolumeKeys == value) {
+                    return@synchronized false
+                }
+
+                state = state.copy(interceptVolumeKeys = value)
                 true
             }
 

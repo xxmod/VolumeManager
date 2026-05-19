@@ -65,6 +65,19 @@ class Manager(context: Context, dataStore: DataStore<Preferences>) {
         appPreferencesStore.setSystemSliderVisible(id, visible)
     }
 
+    private var _interceptVolumeKeys by mutableStateOf(true)
+    val interceptVolumeKeys: Boolean
+        get() = _interceptVolumeKeys
+
+    fun setInterceptVolumeKeys(value: Boolean) {
+        if (_interceptVolumeKeys == value) {
+            return
+        }
+
+        _interceptVolumeKeys = value
+        appPreferencesStore.interceptVolumeKeys = value
+    }
+
     val apps = mutableStateMapOf<String, App>()
 
     private fun reloadApps() {
@@ -182,6 +195,8 @@ class Manager(context: Context, dataStore: DataStore<Preferences>) {
 
             _systemSliderVisibility.clear()
             _systemSliderVisibility.putAll(appPreferencesStore.systemSliderVisibility)
+
+            _interceptVolumeKeys = appPreferencesStore.interceptVolumeKeys
 
             if (first) {
                 initialize()
