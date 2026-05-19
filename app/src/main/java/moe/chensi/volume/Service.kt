@@ -202,16 +202,16 @@ class Service : AccessibilityService() {
                 }
 
                 return VolumeManagerTheme {
-                    LaunchedEffect(isExpanded, manager.buttonOffsetX, manager.buttonOffsetY) {
+                    androidx.compose.runtime.LaunchedEffect(isExpanded, manager.buttonOffsetX, manager.buttonOffsetY) {
                         if (!isExpanded) {
-                            layoutParams.x = manager.buttonOffsetX.roundToInt()
-                            layoutParams.y = manager.buttonOffsetY.roundToInt()
+                            this@Service.layoutParams.x = manager.buttonOffsetX.roundToInt()
+                            this@Service.layoutParams.y = manager.buttonOffsetY.roundToInt()
                         } else {
-                            layoutParams.x = 0
-                            layoutParams.y = 0
+                            this@Service.layoutParams.x = 0
+                            this@Service.layoutParams.y = 0
                         }
                         if (view != null) {
-                            windowManager.updateViewLayout(view, layoutParams)
+                            windowManager.updateViewLayout(view, this@Service.layoutParams)
                         }
                     }
 
