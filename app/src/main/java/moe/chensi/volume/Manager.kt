@@ -66,16 +66,52 @@ class Manager(context: Context, dataStore: DataStore<Preferences>) {
     }
 
     private var _interceptVolumeKeys by mutableStateOf(true)
-    val interceptVolumeKeys: Boolean
-        get() = _interceptVolumeKeys
+    val interceptVolumeKeys: Boolean get() = _interceptVolumeKeys
 
     fun setInterceptVolumeKeys(value: Boolean) {
-        if (_interceptVolumeKeys == value) {
-            return
-        }
-
+        if (_interceptVolumeKeys == value) return
         _interceptVolumeKeys = value
         appPreferencesStore.interceptVolumeKeys = value
+    }
+
+    private var _buttonOffsetX by mutableStateOf(0f)
+    val buttonOffsetX: Float get() = _buttonOffsetX
+    fun setButtonOffsetX(value: Float) {
+        if (_buttonOffsetX == value) return
+        _buttonOffsetX = value
+        appPreferencesStore.buttonOffsetX = value
+    }
+
+    private var _buttonOffsetY by mutableStateOf(0f)
+    val buttonOffsetY: Float get() = _buttonOffsetY
+    fun setButtonOffsetY(value: Float) {
+        if (_buttonOffsetY == value) return
+        _buttonOffsetY = value
+        appPreferencesStore.buttonOffsetY = value
+    }
+
+    private var _buttonCornerRadius by mutableStateOf(28f)
+    val buttonCornerRadius: Float get() = _buttonCornerRadius
+    fun setButtonCornerRadius(value: Float) {
+        if (_buttonCornerRadius == value) return
+        _buttonCornerRadius = value
+        appPreferencesStore.buttonCornerRadius = value
+    }
+
+    private var _buttonSize by mutableStateOf(56f)
+    val buttonSize: Float get() = _buttonSize
+    fun setButtonSize(value: Float) {
+        if (_buttonSize == value) return
+        _buttonSize = value
+        appPreferencesStore.buttonSize = value
+    }
+
+    private var _buttonColor by mutableStateOf("#FF6200EE")
+    val buttonColor: String get() = _buttonColor
+    fun setButtonColor(value: String) {
+        if (_buttonColor == value) return
+        _buttonColor = value
+        appPreferencesStore.buttonColor = value
     }
 
     val apps = mutableStateMapOf<String, App>()
@@ -197,6 +233,11 @@ class Manager(context: Context, dataStore: DataStore<Preferences>) {
             _systemSliderVisibility.putAll(appPreferencesStore.systemSliderVisibility)
 
             _interceptVolumeKeys = appPreferencesStore.interceptVolumeKeys
+            _buttonOffsetX = appPreferencesStore.buttonOffsetX
+            _buttonOffsetY = appPreferencesStore.buttonOffsetY
+            _buttonCornerRadius = appPreferencesStore.buttonCornerRadius
+            _buttonSize = appPreferencesStore.buttonSize
+            _buttonColor = appPreferencesStore.buttonColor
 
             if (first) {
                 initialize()

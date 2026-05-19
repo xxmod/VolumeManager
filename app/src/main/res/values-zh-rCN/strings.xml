@@ -26,5 +26,10 @@
     <string name="enable_do_not_disturb">开启勿扰模式</string>
     <string name="disable_do_not_disturb">关闭勿扰模式</string>
     <string name="settings_title">设置</string>
-    <string name="settings_intercept_volume_keys">接管音量调节按键</string>
+    <string name="settings_intercept_volume_keys">显示音量调节按钮键</string>
+    <string name="settings_button_size">按钮大小：%1$d</string>
+    <string name="settings_button_offset_x">X 轴位置：%1$d</string>
+    <string name="settings_button_offset_y">Y 轴位置：%1$d</string>
+    <string name="settings_button_corner_radius">按钮圆角强度：%1$d</string>
+    <string name="settings_button_color">按钮颜色 (16进制)</string>
 </resources>

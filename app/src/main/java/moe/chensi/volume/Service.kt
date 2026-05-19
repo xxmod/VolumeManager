@@ -35,6 +35,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.AbstractComposeView
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import kotlin.math.roundToInt
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.setViewTreeLifecycleOwner
@@ -183,31 +195,68 @@ class Service : AccessibilityService() {
 
             @Composable
             override fun Content() {
+                // Parse color from settings or fallback to primary container
+                val backgroundColor = try {
+                    Color(android.graphics.Color.parseColor(manager.buttonColor))
+                } catch (e: Exception) {
+                    MaterialTheme.colorScheme.primaryContainer
+                }
+
                 return VolumeManagerTheme {
-                    Surface(
-                        color = Color(1f, 1f, 1f, 0.3f),
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        shape = RoundedCornerShape(40f)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(20.dp, 16.dp)
-                        ) {
-                            AppVolumeList(
-                                apps = manager.apps.values,
-                                showAll = false,
-                                onChange = this@Service.handler::startIdleTimer
-                            ) {
-                                item("system_volume_panel") {
-                                    SystemVolumePanel(
-                                        audioManager = manager.audioManager,
-                                        notificationManagerProxy = manager.notificationManagerProxy,
-                                        showCallVolumeAlways = false,
-                                        applyVisibilityFilter = true,
-                                        allowVisibilityConfig = false,
-                                        isSliderVisible = manager::isSystemSliderVisible,
-                                        onSliderVisibilityChange = manager::setSystemSliderVisible,
-                                        onChange = this@Service.handler::startIdleTimer
+                    if (!isExpanded) {
+                        // Show floating round button
+                        Box(
+                            modifier = Modifier
+                                .offset {
+                                    IntOffset(
+                                        manager.buttonOffsetX.roundToInt(),
+                                        manager.buttonOffsetY.roundToInt()
                                     )
+                                }
+                                .size(manager.buttonSize.dp)
+                                .background(
+                                    color = backgroundColor,
+                                    shape = RoundedCornerShape(manager.buttonCornerRadius.dp)
+                                )
+                                .clickable {
+                                    isExpanded = true
+                                    this@Service.handler.startIdleTimer()
+                                },
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.VolumeUp,
+                                contentDescription = "Volume",
+                                tint = Color.White
+                            )
+                        }
+                    } else {
+                        // Show original volume panel
+                        Surface(
+                            color = Color(1f, 1f, 1f, 0.3f),
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                            shape = RoundedCornerShape(40f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(20.dp, 16.dp)
+                            ) {
+                                AppVolumeList(
+                                    apps = manager.apps.values,
+                                    showAll = false,
+                                    onChange = this@Service.handler::startIdleTimer
+                                ) {
+                                    item("system_volume_panel") {
+                                        SystemVolumePanel(
+                                            audioManager = manager.audioManager,
+                                            notificationManagerProxy = manager.notificationManagerProxy,
+                                            showCallVolumeAlways = false,
+                                            applyVisibilityFilter = true,
+                                            allowVisibilityConfig = false,
+                                            isSliderVisible = manager::isSystemSliderVisible,
+                                            onSliderVisibilityChange = manager::setSystemSliderVisible,
+                                            onChange = this@Service.handler::startIdleTimer
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -231,6 +280,7 @@ class Service : AccessibilityService() {
 
     private var view: View? = null
     private var viewVisible = false
+    private var isExpanded by mutableStateOf(false)
 
     private fun showView() {
         if (view == null) {
@@ -240,6 +290,8 @@ class Service : AccessibilityService() {
             layoutParams.alpha = 0f
             windowManager.addView(view, layoutParams)
         }
+        
+        isExpanded = false
 
         if (!viewVisible) {
             Log.i(TAG, "animate in")
@@ -373,21 +425,10 @@ class Service : AccessibilityService() {
             }
         }
 
-        when (event.action) {
-            KeyEvent.ACTION_DOWN -> {
-                handler.startRepeatAdjustVolume(
-                    if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-                        AudioManager.ADJUST_RAISE
-                    } else {
-                        AudioManager.ADJUST_LOWER
-                    }
-                )
-                showView()
-            }
-
-            KeyEvent.ACTION_UP -> handler.stopRepeatAdjustVolume()
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            showView()
         }
 
-        return true
+        return false
     }
 }

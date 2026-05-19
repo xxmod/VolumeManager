@@ -37,7 +37,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -435,14 +436,22 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun SettingsSection(manager: Manager) {
+    val context = LocalContext.current
+    val showPreview = {
+        val intent = Intent(Service.ACTION_SHOW_VIEW)
+        intent.setPackage(context.packageName)
+        context.sendBroadcast(intent)
+    }
+
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.padding(bottom = 32.dp)
     ) {
         Text(
             text = stringResource(R.string.settings_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp)
+            modifier = Modifier.padding(start = 16.dp, top = 8.dp)
         )
 
         Row(
@@ -460,6 +469,45 @@ private fun SettingsSection(manager: Manager) {
                 checked = manager.interceptVolumeKeys,
                 onCheckedChange = { manager.setInterceptVolumeKeys(it) }
             )
+        }
+
+        if (manager.interceptVolumeKeys) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Text(text = stringResource(R.string.settings_button_size, manager.buttonSize.toInt()))
+                Slider(
+                    value = manager.buttonSize,
+                    onValueChange = { manager.setButtonSize(it); showPreview() },
+                    valueRange = 32f..128f
+                )
+
+                Text(text = stringResource(R.string.settings_button_offset_x, manager.buttonOffsetX.toInt()))
+                Slider(
+                    value = manager.buttonOffsetX,
+                    onValueChange = { manager.setButtonOffsetX(it); showPreview() },
+                    valueRange = -500f..500f
+                )
+
+                Text(text = stringResource(R.string.settings_button_offset_y, manager.buttonOffsetY.toInt()))
+                Slider(
+                    value = manager.buttonOffsetY,
+                    onValueChange = { manager.setButtonOffsetY(it); showPreview() },
+                    valueRange = -800f..800f
+                )
+
+                Text(text = stringResource(R.string.settings_button_corner_radius, manager.buttonCornerRadius.toInt()))
+                Slider(
+                    value = manager.buttonCornerRadius,
+                    onValueChange = { manager.setButtonCornerRadius(it); showPreview() },
+                    valueRange = 0f..64f
+                )
+
+                OutlinedTextField(
+                    value = manager.buttonColor,
+                    onValueChange = { manager.setButtonColor(it); showPreview() },
+                    label = { Text(stringResource(R.string.settings_button_color)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }

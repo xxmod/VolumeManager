@@ -25,5 +25,10 @@
     <string name="enable_do_not_disturb">Enable Do Not Disturb</string>
     <string name="disable_do_not_disturb">Disable Do Not Disturb</string>
     <string name="settings_title">Settings</string>
-    <string name="settings_intercept_volume_keys">Intercept volume buttons</string>
+    <string name="settings_intercept_volume_keys">Show volume adjustment button</string>
+    <string name="settings_button_size">Button Size: %1$d</string>
+    <string name="settings_button_offset_x">X Axis Position: %1$d</string>
+    <string name="settings_button_offset_y">Y Axis Position: %1$d</string>
+    <string name="settings_button_corner_radius">Button Corner Radius: %1$d</string>
+    <string name="settings_button_color">Button Color (Hex)</string>
 </resources>

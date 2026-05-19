@@ -24,7 +24,12 @@ class AppPreferencesStore(private val dataStore: DataStore<Preferences>) {
         val values: MutableList<AppPreferences>,
         val indices: MutableMap<String, Int>,
         val systemSliderVisibility: MutableMap<String, Boolean> = mutableMapOf(),
-        val interceptVolumeKeys: Boolean = true
+        val interceptVolumeKeys: Boolean = true,
+        val buttonOffsetX: Float = 0f,
+        val buttonOffsetY: Float = 0f,
+        val buttonCornerRadius: Float = 28f,
+        val buttonSize: Float = 56f,
+        val buttonColor: String = "#FF6200EE"
     )
 
     private val lock = Any()
@@ -88,6 +93,62 @@ class AppPreferencesStore(private val dataStore: DataStore<Preferences>) {
                 save()
             }
         }
+
+    var buttonOffsetX: Float
+        get() = synchronized(lock) { state.buttonOffsetX }
+        set(value) {
+            val changed = synchronized(lock) {
+                if (state.buttonOffsetX == value) return@synchronized false
+                state = state.copy(buttonOffsetX = value)
+                true
+            }
+            if (changed) save()
+        }
+
+    var buttonOffsetY: Float
+        get() = synchronized(lock) { state.buttonOffsetY }
+        set(value) {
+            val changed = synchronized(lock) {
+                if (state.buttonOffsetY == value) return@synchronized false
+                state = state.copy(buttonOffsetY = value)
+                true
+            }
+            if (changed) save()
+        }
+
+    var buttonCornerRadius: Float
+        get() = synchronized(lock) { state.buttonCornerRadius }
+        set(value) {
+            val changed = synchronized(lock) {
+                if (state.buttonCornerRadius == value) return@synchronized false
+                state = state.copy(buttonCornerRadius = value)
+                true
+            }
+            if (changed) save()
+        }
+
+    var buttonSize: Float
+        get() = synchronized(lock) { state.buttonSize }
+        set(value) {
+            val changed = synchronized(lock) {
+                if (state.buttonSize == value) return@synchronized false
+                state = state.copy(buttonSize = value)
+                true
+            }
+            if (changed) save()
+        }
+
+    var buttonColor: String
+        get() = synchronized(lock) { state.buttonColor }
+        set(value) {
+            val changed = synchronized(lock) {
+                if (state.buttonColor == value) return@synchronized false
+                state = state.copy(buttonColor = value)
+                true
+            }
+            if (changed) save()
+        }
+
 
     fun track(onChange: (first: Boolean) -> Unit) {
         var first = true
