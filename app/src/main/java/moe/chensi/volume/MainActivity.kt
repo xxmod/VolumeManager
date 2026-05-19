@@ -508,6 +508,13 @@ private fun SettingsSection(manager: Manager) {
                     label = { Text(stringResource(R.string.settings_button_color)) },
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Text(text = stringResource(R.string.settings_idle_timeout, manager.idleTimeout.toInt()))
+                Slider(
+                    value = manager.idleTimeout,
+                    onValueChange = { manager.setIdleTimeout(it); showPreview() },
+                    valueRange = 1f..10f
+                )
             }
         }
     }

@@ -114,6 +114,14 @@ class Manager(context: Context, dataStore: DataStore<Preferences>) {
         appPreferencesStore.buttonColor = value
     }
 
+    private var _idleTimeout by mutableStateOf(5f)
+    val idleTimeout: Float get() = _idleTimeout
+    fun setIdleTimeout(value: Float) {
+        if (_idleTimeout == value) return
+        _idleTimeout = value
+        appPreferencesStore.idleTimeout = value
+    }
+
     val apps = mutableStateMapOf<String, App>()
 
     private fun reloadApps() {
@@ -238,6 +246,7 @@ class Manager(context: Context, dataStore: DataStore<Preferences>) {
             _buttonCornerRadius = appPreferencesStore.buttonCornerRadius
             _buttonSize = appPreferencesStore.buttonSize
             _buttonColor = appPreferencesStore.buttonColor
+            _idleTimeout = appPreferencesStore.idleTimeout
 
             if (first) {
                 initialize()

@@ -32,4 +32,5 @@
     <string name="settings_button_offset_y">Y 轴位置：%1$d</string>
     <string name="settings_button_corner_radius">按钮圆角强度：%1$d</string>
     <string name="settings_button_color">按钮颜色 (16进制)</string>
+    <string name="settings_idle_timeout">悬浮窗消失时间：%1$ds</string>
 </resources>

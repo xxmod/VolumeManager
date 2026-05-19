@@ -31,4 +31,5 @@
     <string name="settings_button_offset_y">Y Axis Position: %1$d</string>
     <string name="settings_button_corner_radius">Button Corner Radius: %1$d</string>
     <string name="settings_button_color">Button Color (Hex)</string>
+    <string name="settings_idle_timeout">Idle Timeout: %1$ds</string>
 </resources>

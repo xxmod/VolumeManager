@@ -71,7 +71,6 @@ class Service : AccessibilityService() {
 
         private const val ANIMATION_DURATION = 300L
 
-        private const val IDLE_TIMEOUT = 5000L
         private const val AUTO_REPEAT_DELAY = 100L
         private const val AUTO_REPEAT_INITIAL_DELAY = 500L
     }
@@ -106,7 +105,7 @@ class Service : AccessibilityService() {
 
         fun startIdleTimer() {
             removeCallbacks(hideViewRunnable)
-            postDelayed(hideViewRunnable, IDLE_TIMEOUT)
+            postDelayed(hideViewRunnable, (manager.idleTimeout * 1000).toLong())
         }
 
         private var repeatAdjustVolumeDirection = 0
@@ -203,16 +202,23 @@ class Service : AccessibilityService() {
                 }
 
                 return VolumeManagerTheme {
+                    LaunchedEffect(isExpanded, manager.buttonOffsetX, manager.buttonOffsetY) {
+                        if (!isExpanded) {
+                            layoutParams.x = manager.buttonOffsetX.roundToInt()
+                            layoutParams.y = manager.buttonOffsetY.roundToInt()
+                        } else {
+                            layoutParams.x = 0
+                            layoutParams.y = 0
+                        }
+                        if (view != null) {
+                            windowManager.updateViewLayout(view, layoutParams)
+                        }
+                    }
+
                     if (!isExpanded) {
                         // Show floating round button
                         Box(
                             modifier = Modifier
-                                .offset {
-                                    IntOffset(
-                                        manager.buttonOffsetX.roundToInt(),
-                                        manager.buttonOffsetY.roundToInt()
-                                    )
-                                }
                                 .size(manager.buttonSize.dp)
                                 .background(
                                     color = backgroundColor,

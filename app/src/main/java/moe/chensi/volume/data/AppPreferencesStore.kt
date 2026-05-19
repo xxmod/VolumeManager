@@ -29,7 +29,8 @@ class AppPreferencesStore(private val dataStore: DataStore<Preferences>) {
         val buttonOffsetY: Float = 0f,
         val buttonCornerRadius: Float = 28f,
         val buttonSize: Float = 56f,
-        val buttonColor: String = "#FF6200EE"
+        val buttonColor: String = "#FF6200EE",
+        val idleTimeout: Float = 5f
     )
 
     private val lock = Any()
@@ -144,6 +145,17 @@ class AppPreferencesStore(private val dataStore: DataStore<Preferences>) {
             val changed = synchronized(lock) {
                 if (state.buttonColor == value) return@synchronized false
                 state = state.copy(buttonColor = value)
+                true
+            }
+            if (changed) save()
+        }
+
+    var idleTimeout: Float
+        get() = synchronized(lock) { state.idleTimeout }
+        set(value) {
+            val changed = synchronized(lock) {
+                if (state.idleTimeout == value) return@synchronized false
+                state = state.copy(idleTimeout = value)
                 true
             }
             if (changed) save()
