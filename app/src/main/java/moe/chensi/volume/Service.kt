@@ -84,16 +84,17 @@ class Service : AccessibilityService() {
     }
     private lateinit var manager: Manager
 
-    // 标志：按钮滑入动画进行中，防止 LaunchedEffect 覆盖起始位置
-    private var isSlideAnimatingIn = false
+    // 面板展开动画的独立 Animator，避免与按钮动画的 currentAnimator 冲突
+    private var panelAnimator: ValueAnimator? = null
 
     private val handler = object : Handler(Looper.getMainLooper()) {
         fun hideView() {
             if (viewVisible) {
                 Log.i(TAG, "animate out")
-                isSlideAnimatingIn = false
                 if (isExpanded) {
                     // 面板展开状态下，淡出隐藏
+                    panelAnimator?.cancel()
+                    panelAnimator = null
                     animateAlpha(layoutParams.alpha, 0f, ANIMATION_DURATION) {
                         if (!viewVisible) {
                             Log.i(TAG, "remove view")
@@ -104,10 +105,10 @@ class Service : AccessibilityService() {
                         }
                     }
                 } else {
-                    // 按钮状态下，从当前设定位置向右滑出到屏幕外
+                    // 按钮状态下，从设定位置向右滑出到屏幕外
+                    currentAnimator?.cancel()
                     val screenWidth = resources.displayMetrics.widthPixels
                     val startX = manager.buttonOffsetX.roundToInt()
-                    // 先确保位置正确再开始滑出动画
                     layoutParams.x = startX
                     if (view != null) windowManager.updateViewLayout(view, layoutParams)
                     animateSlideX(startX, screenWidth, ANIMATION_DURATION) {
@@ -160,6 +161,50 @@ class Service : AccessibilityService() {
     }
 
     private var lifecycle: LifecycleRegistry? = null
+
+    /**
+     * 展开面板：先将窗口移到屏幕右边缘，切换到面板UI，再启动滑入动画
+     * 在主线程上同步调用，确保位置设置在 Compose 重组之前生效
+     */
+    private fun expandPanel() {
+        currentAnimator?.cancel()
+        currentAnimator = null
+
+        // 在 Compose 重组之前将窗口移到屏幕右边缘，防止面板闪现在按钮位置
+        val screenWidth = resources.displayMetrics.widthPixels
+        layoutParams.x = screenWidth
+        layoutParams.y = 0
+        layoutParams.alpha = 1f
+        if (view != null) windowManager.updateViewLayout(view, layoutParams)
+
+        // 切换到面板 UI
+        isExpanded = true
+
+        // 用 Handler.post 确保在 Compose 完成重组后再启动面板滑入动画
+        handler.post {
+            panelAnimator?.cancel()
+            val animator = ValueAnimator.ofInt(screenWidth, 0)
+            animator.duration = manager.animationDuration.toLong()
+            animator.interpolator = android.view.animation.DecelerateInterpolator()
+            animator.addUpdateListener { animation ->
+                layoutParams.x = animation.animatedValue as Int
+                if (view != null) windowManager.updateViewLayout(view, layoutParams)
+            }
+            animator.addListener(object : Animator.AnimatorListener {
+                override fun onAnimationStart(animation: Animator) {}
+                override fun onAnimationEnd(animation: Animator) {
+                    layoutParams.x = 0
+                    if (view != null) windowManager.updateViewLayout(view, layoutParams)
+                }
+                override fun onAnimationCancel(animation: Animator) {}
+                override fun onAnimationRepeat(animation: Animator) {}
+            })
+            animator.start()
+            panelAnimator = animator
+        }
+
+        handler.startIdleTimer()
+    }
 
     private fun createView(): View {
         return object : AbstractComposeView(this) {
@@ -217,15 +262,10 @@ class Service : AccessibilityService() {
                 }
 
                 return VolumeManagerTheme {
+                    // LaunchedEffect 仅用于设置模糊背景，不做任何位置管理
                     androidx.compose.runtime.LaunchedEffect(isExpanded) {
                         if (!isExpanded) {
                             background = null
-                            // 仅在非滑入动画期间设置位置（避免覆盖滑入起始位置）
-                            if (!isSlideAnimatingIn) {
-                                this@Service.layoutParams.x = manager.buttonOffsetX.roundToInt()
-                                this@Service.layoutParams.y = manager.buttonOffsetY.roundToInt()
-                                if (view != null) windowManager.updateViewLayout(view, this@Service.layoutParams)
-                            }
                         } else {
                             @Suppress("SpellCheckingInspection") if (windowManager.isCrossWindowBlurEnabled && isHardwareAccelerated && Build.MANUFACTURER != "realme") {
                                 background = org.joor.Reflect.on(rootSurfaceControl).call("createBackgroundBlurDrawable").apply {
@@ -233,15 +273,12 @@ class Service : AccessibilityService() {
                                     call("setCornerRadius", 40f)
                                 }.get()
                             }
-
-                            // 从屏幕右边缘动画滑入到中心位置（位置已在点击回调中预设）
-                            val screenWidth = resources.displayMetrics.widthPixels
-                            animateSlideX(screenWidth, 0, manager.animationDuration.toLong())
                         }
                     }
 
+                    // 设置页面实时调整按钮位置（仅在按钮未展开且无动画时）
                     androidx.compose.runtime.LaunchedEffect(manager.buttonOffsetX, manager.buttonOffsetY) {
-                        if (!isExpanded && !isSlideAnimatingIn) {
+                        if (!isExpanded && viewVisible) {
                             this@Service.layoutParams.x = manager.buttonOffsetX.roundToInt()
                             this@Service.layoutParams.y = manager.buttonOffsetY.roundToInt()
                             if (view != null) windowManager.updateViewLayout(view, this@Service.layoutParams)
@@ -264,13 +301,7 @@ class Service : AccessibilityService() {
                                     } catch (e: Exception) {
                                         Log.w(TAG, "Failed to close system dialogs", e)
                                     }
-                                    // 在重组之前立即将窗口移到屏幕右边缘，避免面板闪现在按钮位置
-                                    val screenWidth = resources.displayMetrics.widthPixels
-                                    this@Service.layoutParams.x = screenWidth
-                                    this@Service.layoutParams.y = 0
-                                    if (this@Service.view != null) windowManager.updateViewLayout(this@Service.view, this@Service.layoutParams)
-                                    isExpanded = true
-                                    this@Service.handler.startIdleTimer()
+                                    expandPanel()
                                 },
                             contentAlignment = androidx.compose.ui.Alignment.Center
                         ) {
@@ -337,7 +368,7 @@ class Service : AccessibilityService() {
             Log.i(TAG, "add view")
             // The view doesn't respond to input events if reused
             view = createView()
-            // 初始位置在屏幕右边缘外，用于滑入动画
+            // 初始位置在屏幕右边缘外，alpha=1，准备滑入
             val screenWidth = resources.displayMetrics.widthPixels
             layoutParams.alpha = 1f
             layoutParams.x = screenWidth
@@ -347,17 +378,29 @@ class Service : AccessibilityService() {
         
         isExpanded = false
 
+        // 如果视图已可见（如从面板折叠回按钮），立即设置按钮位置
+        if (viewVisible) {
+            panelAnimator?.cancel()
+            panelAnimator = null
+            layoutParams.x = manager.buttonOffsetX.roundToInt()
+            layoutParams.y = manager.buttonOffsetY.roundToInt()
+            layoutParams.alpha = 1f
+            if (view != null) windowManager.updateViewLayout(view, layoutParams)
+        }
+
         if (!viewVisible) {
             Log.i(TAG, "animate in - slide from right")
-            // 从屏幕右边缘滑入到设定的按钮偏移位置
+            // 确保起始位置在屏幕右边缘外
             val screenWidth = resources.displayMetrics.widthPixels
             val targetX = manager.buttonOffsetX.roundToInt()
             layoutParams.alpha = 1f
             layoutParams.x = screenWidth
+            layoutParams.y = manager.buttonOffsetY.roundToInt()
             if (view != null) windowManager.updateViewLayout(view, layoutParams)
-            isSlideAnimatingIn = true
-            animateSlideX(screenWidth, targetX, ANIMATION_DURATION) {
-                isSlideAnimatingIn = false
+            // 用 Handler.post 确保在首次 Compose 组合完成后再启动动画，
+            // 避免 Compose 初始化过程中的位置竞争
+            handler.post {
+                animateSlideX(screenWidth, targetX, ANIMATION_DURATION)
             }
             viewVisible = true
         }
