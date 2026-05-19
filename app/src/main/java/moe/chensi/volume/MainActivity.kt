@@ -59,6 +59,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -474,29 +477,29 @@ private fun SettingsSection(manager: Manager) {
 
         if (manager.interceptVolumeKeys) {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Text(text = stringResource(R.string.settings_button_size, manager.buttonSize.toInt()))
-                Slider(
+                SliderWithInput(
+                    labelRes = R.string.settings_button_size,
                     value = manager.buttonSize,
                     onValueChange = { manager.setButtonSize(it); showPreview() },
                     valueRange = 32f..128f
                 )
 
-                Text(text = stringResource(R.string.settings_button_offset_x, manager.buttonOffsetX.toInt()))
-                Slider(
+                SliderWithInput(
+                    labelRes = R.string.settings_button_offset_x,
                     value = manager.buttonOffsetX,
                     onValueChange = { manager.setButtonOffsetX(it); showPreview() },
                     valueRange = -1500f..1500f
                 )
 
-                Text(text = stringResource(R.string.settings_button_offset_y, manager.buttonOffsetY.toInt()))
-                Slider(
+                SliderWithInput(
+                    labelRes = R.string.settings_button_offset_y,
                     value = manager.buttonOffsetY,
                     onValueChange = { manager.setButtonOffsetY(it); showPreview() },
                     valueRange = -2500f..2500f
                 )
 
-                Text(text = stringResource(R.string.settings_button_corner_radius, manager.buttonCornerRadius.toInt()))
-                Slider(
+                SliderWithInput(
+                    labelRes = R.string.settings_button_corner_radius,
                     value = manager.buttonCornerRadius,
                     onValueChange = { manager.setButtonCornerRadius(it); showPreview() },
                     valueRange = 0f..64f
@@ -509,20 +512,75 @@ private fun SettingsSection(manager: Manager) {
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Text(text = stringResource(R.string.settings_idle_timeout, manager.idleTimeout.toInt()))
-                Slider(
+                SliderWithInput(
+                    labelRes = R.string.settings_idle_timeout,
                     value = manager.idleTimeout,
                     onValueChange = { manager.setIdleTimeout(it); showPreview() },
                     valueRange = 1f..10f
                 )
 
-                Text(text = stringResource(R.string.settings_animation_duration, manager.animationDuration.toInt()))
-                Slider(
+                SliderWithInput(
+                    labelRes = R.string.settings_animation_duration,
                     value = manager.animationDuration,
                     onValueChange = { manager.setAnimationDuration(it); showPreview() },
                     valueRange = 0f..1000f
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SliderWithInput(
+    labelRes: Int,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>
+) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    Text(
+        text = stringResource(labelRes, value.toInt()),
+        modifier = Modifier
+            .clickable { showDialog = true }
+            .padding(vertical = 4.dp),
+        color = MaterialTheme.colorScheme.primary
+    )
+    Slider(
+        value = value,
+        onValueChange = onValueChange,
+        valueRange = valueRange
+    )
+
+    if (showDialog) {
+        var textValue by remember { mutableStateOf(value.toInt().toString()) }
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text(stringResource(labelRes, value.toInt())) },
+            text = {
+                OutlinedTextField(
+                    value = textValue,
+                    onValueChange = { textValue = it },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val floatValue = textValue.toFloatOrNull()
+                    if (floatValue != null) {
+                        onValueChange(floatValue.coerceIn(valueRange))
+                    }
+                    showDialog = false
+                }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            }
+        )
     }
 }
