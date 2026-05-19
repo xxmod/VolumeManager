@@ -122,6 +122,14 @@ class Manager(context: Context, dataStore: DataStore<Preferences>) {
         appPreferencesStore.idleTimeout = value
     }
 
+    private var _animationDuration by mutableStateOf(300f)
+    val animationDuration: Float get() = _animationDuration
+    fun setAnimationDuration(value: Float) {
+        if (_animationDuration == value) return
+        _animationDuration = value
+        appPreferencesStore.animationDuration = value
+    }
+
     val apps = mutableStateMapOf<String, App>()
 
     private fun reloadApps() {
@@ -247,6 +255,7 @@ class Manager(context: Context, dataStore: DataStore<Preferences>) {
             _buttonSize = appPreferencesStore.buttonSize
             _buttonColor = appPreferencesStore.buttonColor
             _idleTimeout = appPreferencesStore.idleTimeout
+            _animationDuration = appPreferencesStore.animationDuration
 
             if (first) {
                 initialize()

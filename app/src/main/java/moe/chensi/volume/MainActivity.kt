@@ -485,14 +485,14 @@ private fun SettingsSection(manager: Manager) {
                 Slider(
                     value = manager.buttonOffsetX,
                     onValueChange = { manager.setButtonOffsetX(it); showPreview() },
-                    valueRange = -500f..500f
+                    valueRange = -1500f..1500f
                 )
 
                 Text(text = stringResource(R.string.settings_button_offset_y, manager.buttonOffsetY.toInt()))
                 Slider(
                     value = manager.buttonOffsetY,
                     onValueChange = { manager.setButtonOffsetY(it); showPreview() },
-                    valueRange = -800f..800f
+                    valueRange = -2500f..2500f
                 )
 
                 Text(text = stringResource(R.string.settings_button_corner_radius, manager.buttonCornerRadius.toInt()))
@@ -514,6 +514,13 @@ private fun SettingsSection(manager: Manager) {
                     value = manager.idleTimeout,
                     onValueChange = { manager.setIdleTimeout(it); showPreview() },
                     valueRange = 1f..10f
+                )
+
+                Text(text = stringResource(R.string.settings_animation_duration, manager.animationDuration.toInt()))
+                Slider(
+                    value = manager.animationDuration,
+                    onValueChange = { manager.setAnimationDuration(it); showPreview() },
+                    valueRange = 0f..1000f
                 )
             }
         }

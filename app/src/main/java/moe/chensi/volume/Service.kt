@@ -169,14 +169,6 @@ class Service : AccessibilityService() {
 
                 Log.i(TAG, "onAttachedToWindow manufacturer: ${Build.MANUFACTURER}")
 
-                @Suppress("SpellCheckingInspection") if (windowManager.isCrossWindowBlurEnabled && isHardwareAccelerated && Build.MANUFACTURER != "realme") {
-                    background =
-                        Reflect.on(rootSurfaceControl).call("createBackgroundBlurDrawable").apply {
-                            call("setBlurRadius", 200)
-                            call("setCornerRadius", 40f)
-                        }.get()
-                }
-
                 this@Service.handler.startIdleTimer()
             }
 
@@ -202,16 +194,38 @@ class Service : AccessibilityService() {
                 }
 
                 return VolumeManagerTheme {
-                    androidx.compose.runtime.LaunchedEffect(isExpanded, manager.buttonOffsetX, manager.buttonOffsetY) {
+                    androidx.compose.runtime.LaunchedEffect(isExpanded) {
+                        if (!isExpanded) {
+                            background = null
+                            this@Service.layoutParams.x = manager.buttonOffsetX.roundToInt()
+                            this@Service.layoutParams.y = manager.buttonOffsetY.roundToInt()
+                            if (view != null) windowManager.updateViewLayout(view, this@Service.layoutParams)
+                        } else {
+                            @Suppress("SpellCheckingInspection") if (windowManager.isCrossWindowBlurEnabled && isHardwareAccelerated && Build.MANUFACTURER != "realme") {
+                                background = org.joor.Reflect.on(rootSurfaceControl).call("createBackgroundBlurDrawable").apply {
+                                    call("setBlurRadius", 200)
+                                    call("setCornerRadius", 40f)
+                                }.get()
+                            }
+                            
+                            val screenWidth = resources.displayMetrics.widthPixels
+                            val animator = android.animation.ValueAnimator.ofInt(screenWidth, 0)
+                            animator.duration = manager.animationDuration.toLong()
+                            animator.interpolator = android.view.animation.DecelerateInterpolator()
+                            animator.addUpdateListener { animation ->
+                                this@Service.layoutParams.x = animation.animatedValue as Int
+                                this@Service.layoutParams.y = 0
+                                if (view != null) windowManager.updateViewLayout(view, this@Service.layoutParams)
+                            }
+                            animator.start()
+                        }
+                    }
+
+                    androidx.compose.runtime.LaunchedEffect(manager.buttonOffsetX, manager.buttonOffsetY) {
                         if (!isExpanded) {
                             this@Service.layoutParams.x = manager.buttonOffsetX.roundToInt()
                             this@Service.layoutParams.y = manager.buttonOffsetY.roundToInt()
-                        } else {
-                            this@Service.layoutParams.x = 0
-                            this@Service.layoutParams.y = 0
-                        }
-                        if (view != null) {
-                            windowManager.updateViewLayout(view, this@Service.layoutParams)
+                            if (view != null) windowManager.updateViewLayout(view, this@Service.layoutParams)
                         }
                     }
 
@@ -225,6 +239,12 @@ class Service : AccessibilityService() {
                                     shape = RoundedCornerShape(manager.buttonCornerRadius.dp)
                                 )
                                 .clickable {
+                                    try {
+                                        @Suppress("DEPRECATION")
+                                        sendBroadcast(Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS))
+                                    } catch (e: Exception) {
+                                        Log.w(TAG, "Failed to close system dialogs", e)
+                                    }
                                     isExpanded = true
                                     this@Service.handler.startIdleTimer()
                                 },
