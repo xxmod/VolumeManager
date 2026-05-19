@@ -84,10 +84,14 @@ class Service : AccessibilityService() {
     }
     private lateinit var manager: Manager
 
+    // 标志：按钮滑入动画进行中，防止 LaunchedEffect 覆盖起始位置
+    private var isSlideAnimatingIn = false
+
     private val handler = object : Handler(Looper.getMainLooper()) {
         fun hideView() {
             if (viewVisible) {
                 Log.i(TAG, "animate out")
+                isSlideAnimatingIn = false
                 if (isExpanded) {
                     // 面板展开状态下，淡出隐藏
                     animateAlpha(layoutParams.alpha, 0f, ANIMATION_DURATION) {
@@ -100,9 +104,12 @@ class Service : AccessibilityService() {
                         }
                     }
                 } else {
-                    // 按钮状态下，向右滑出隐藏
+                    // 按钮状态下，从当前设定位置向右滑出到屏幕外
                     val screenWidth = resources.displayMetrics.widthPixels
-                    val startX = layoutParams.x
+                    val startX = manager.buttonOffsetX.roundToInt()
+                    // 先确保位置正确再开始滑出动画
+                    layoutParams.x = startX
+                    if (view != null) windowManager.updateViewLayout(view, layoutParams)
                     animateSlideX(startX, screenWidth, ANIMATION_DURATION) {
                         if (!viewVisible) {
                             Log.i(TAG, "remove view")
@@ -213,16 +220,13 @@ class Service : AccessibilityService() {
                     androidx.compose.runtime.LaunchedEffect(isExpanded) {
                         if (!isExpanded) {
                             background = null
-                            this@Service.layoutParams.x = manager.buttonOffsetX.roundToInt()
-                            this@Service.layoutParams.y = manager.buttonOffsetY.roundToInt()
-                            if (view != null) windowManager.updateViewLayout(view, this@Service.layoutParams)
+                            // 仅在非滑入动画期间设置位置（避免覆盖滑入起始位置）
+                            if (!isSlideAnimatingIn) {
+                                this@Service.layoutParams.x = manager.buttonOffsetX.roundToInt()
+                                this@Service.layoutParams.y = manager.buttonOffsetY.roundToInt()
+                                if (view != null) windowManager.updateViewLayout(view, this@Service.layoutParams)
+                            }
                         } else {
-                            // 先立即将窗口移到屏幕右边缘（动画起始位置），避免面板闪现在按钮位置
-                            val screenWidth = resources.displayMetrics.widthPixels
-                            this@Service.layoutParams.x = screenWidth
-                            this@Service.layoutParams.y = 0
-                            if (view != null) windowManager.updateViewLayout(view, this@Service.layoutParams)
-
                             @Suppress("SpellCheckingInspection") if (windowManager.isCrossWindowBlurEnabled && isHardwareAccelerated && Build.MANUFACTURER != "realme") {
                                 background = org.joor.Reflect.on(rootSurfaceControl).call("createBackgroundBlurDrawable").apply {
                                     call("setBlurRadius", 200)
@@ -230,20 +234,14 @@ class Service : AccessibilityService() {
                                 }.get()
                             }
 
-                            // 从屏幕右边缘动画滑入到中心位置
-                            val animator = android.animation.ValueAnimator.ofInt(screenWidth, 0)
-                            animator.duration = manager.animationDuration.toLong()
-                            animator.interpolator = android.view.animation.DecelerateInterpolator()
-                            animator.addUpdateListener { animation ->
-                                this@Service.layoutParams.x = animation.animatedValue as Int
-                                if (view != null) windowManager.updateViewLayout(view, this@Service.layoutParams)
-                            }
-                            animator.start()
+                            // 从屏幕右边缘动画滑入到中心位置（位置已在点击回调中预设）
+                            val screenWidth = resources.displayMetrics.widthPixels
+                            animateSlideX(screenWidth, 0, manager.animationDuration.toLong())
                         }
                     }
 
                     androidx.compose.runtime.LaunchedEffect(manager.buttonOffsetX, manager.buttonOffsetY) {
-                        if (!isExpanded) {
+                        if (!isExpanded && !isSlideAnimatingIn) {
                             this@Service.layoutParams.x = manager.buttonOffsetX.roundToInt()
                             this@Service.layoutParams.y = manager.buttonOffsetY.roundToInt()
                             if (view != null) windowManager.updateViewLayout(view, this@Service.layoutParams)
@@ -266,6 +264,11 @@ class Service : AccessibilityService() {
                                     } catch (e: Exception) {
                                         Log.w(TAG, "Failed to close system dialogs", e)
                                     }
+                                    // 在重组之前立即将窗口移到屏幕右边缘，避免面板闪现在按钮位置
+                                    val screenWidth = resources.displayMetrics.widthPixels
+                                    this@Service.layoutParams.x = screenWidth
+                                    this@Service.layoutParams.y = 0
+                                    if (this@Service.view != null) windowManager.updateViewLayout(this@Service.view, this@Service.layoutParams)
                                     isExpanded = true
                                     this@Service.handler.startIdleTimer()
                                 },
@@ -352,7 +355,10 @@ class Service : AccessibilityService() {
             layoutParams.alpha = 1f
             layoutParams.x = screenWidth
             if (view != null) windowManager.updateViewLayout(view, layoutParams)
-            animateSlideX(screenWidth, targetX, ANIMATION_DURATION)
+            isSlideAnimatingIn = true
+            animateSlideX(screenWidth, targetX, ANIMATION_DURATION) {
+                isSlideAnimatingIn = false
+            }
             viewVisible = true
         }
 
