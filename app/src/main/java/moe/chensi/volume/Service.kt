@@ -35,10 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.AbstractComposeView
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Box\r
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.VolumeUp
@@ -84,41 +82,17 @@ class Service : AccessibilityService() {
     }
     private lateinit var manager: Manager
 
-    // 面板展开动画的独立 Animator，避免与按钮动画的 currentAnimator 冲突
-    private var panelAnimator: ValueAnimator? = null
-
     private val handler = object : Handler(Looper.getMainLooper()) {
         fun hideView() {
             if (viewVisible) {
                 Log.i(TAG, "animate out")
-                if (isExpanded) {
-                    // 面板展开状态下，淡出隐藏
-                    panelAnimator?.cancel()
-                    panelAnimator = null
-                    animateAlpha(layoutParams.alpha, 0f, ANIMATION_DURATION) {
-                        if (!viewVisible) {
-                            Log.i(TAG, "remove view")
-                            view!!.background = null
-                            lifecycle?.currentState = Lifecycle.State.DESTROYED
-                            windowManager.removeView(view)
-                            view = null
-                        }
-                    }
-                } else {
-                    // 按钮状态下，从设定位置向右滑出到屏幕外
-                    currentAnimator?.cancel()
-                    val screenWidth = resources.displayMetrics.widthPixels
-                    val startX = manager.buttonOffsetX.roundToInt()
-                    layoutParams.x = startX
-                    if (view != null) windowManager.updateViewLayout(view, layoutParams)
-                    animateSlideX(startX, screenWidth, ANIMATION_DURATION) {
-                        if (!viewVisible) {
-                            Log.i(TAG, "remove view")
-                            view!!.background = null
-                            lifecycle?.currentState = Lifecycle.State.DESTROYED
-                            windowManager.removeView(view)
-                            view = null
-                        }
+                animateAlpha(layoutParams.alpha, 0f, ANIMATION_DURATION) {
+                    if (!viewVisible) {
+                        Log.i(TAG, "remove view")
+                        view!!.background = null
+                        lifecycle?.currentState = Lifecycle.State.DESTROYED
+                        windowManager.removeView(view)
+                        view = null
                     }
                 }
                 viewVisible = false
@@ -161,50 +135,6 @@ class Service : AccessibilityService() {
     }
 
     private var lifecycle: LifecycleRegistry? = null
-
-    /**
-     * 展开面板：先将窗口移到屏幕右边缘，切换到面板UI，再启动滑入动画
-     * 在主线程上同步调用，确保位置设置在 Compose 重组之前生效
-     */
-    private fun expandPanel() {
-        currentAnimator?.cancel()
-        currentAnimator = null
-
-        // 在 Compose 重组之前将窗口移到屏幕右边缘，防止面板闪现在按钮位置
-        val screenWidth = resources.displayMetrics.widthPixels
-        layoutParams.x = screenWidth
-        layoutParams.y = 0
-        layoutParams.alpha = 1f
-        if (view != null) windowManager.updateViewLayout(view, layoutParams)
-
-        // 切换到面板 UI
-        isExpanded = true
-
-        // 用 Handler.post 确保在 Compose 完成重组后再启动面板滑入动画
-        handler.post {
-            panelAnimator?.cancel()
-            val animator = ValueAnimator.ofInt(screenWidth, 0)
-            animator.duration = manager.animationDuration.toLong()
-            animator.interpolator = android.view.animation.DecelerateInterpolator()
-            animator.addUpdateListener { animation ->
-                layoutParams.x = animation.animatedValue as Int
-                if (view != null) windowManager.updateViewLayout(view, layoutParams)
-            }
-            animator.addListener(object : Animator.AnimatorListener {
-                override fun onAnimationStart(animation: Animator) {}
-                override fun onAnimationEnd(animation: Animator) {
-                    layoutParams.x = 0
-                    if (view != null) windowManager.updateViewLayout(view, layoutParams)
-                }
-                override fun onAnimationCancel(animation: Animator) {}
-                override fun onAnimationRepeat(animation: Animator) {}
-            })
-            animator.start()
-            panelAnimator = animator
-        }
-
-        handler.startIdleTimer()
-    }
 
     private fun createView(): View {
         return object : AbstractComposeView(this) {
@@ -262,10 +192,12 @@ class Service : AccessibilityService() {
                 }
 
                 return VolumeManagerTheme {
-                    // LaunchedEffect 仅用于设置模糊背景，不做任何位置管理
                     androidx.compose.runtime.LaunchedEffect(isExpanded) {
                         if (!isExpanded) {
                             background = null
+                            this@Service.layoutParams.x = manager.buttonOffsetX.roundToInt()
+                            this@Service.layoutParams.y = manager.buttonOffsetY.roundToInt()
+                            if (view != null) windowManager.updateViewLayout(view, this@Service.layoutParams)
                         } else {
                             @Suppress("SpellCheckingInspection") if (windowManager.isCrossWindowBlurEnabled && isHardwareAccelerated && Build.MANUFACTURER != "realme") {
                                 background = org.joor.Reflect.on(rootSurfaceControl).call("createBackgroundBlurDrawable").apply {
@@ -273,12 +205,15 @@ class Service : AccessibilityService() {
                                     call("setCornerRadius", 40f)
                                 }.get()
                             }
+                            
+                            this@Service.layoutParams.x = 0
+                            this@Service.layoutParams.y = 0
+                            if (view != null) windowManager.updateViewLayout(view, this@Service.layoutParams)
                         }
                     }
 
-                    // 设置页面实时调整按钮位置（仅在按钮未展开且无动画时）
                     androidx.compose.runtime.LaunchedEffect(manager.buttonOffsetX, manager.buttonOffsetY) {
-                        if (!isExpanded && viewVisible) {
+                        if (!isExpanded) {
                             this@Service.layoutParams.x = manager.buttonOffsetX.roundToInt()
                             this@Service.layoutParams.y = manager.buttonOffsetY.roundToInt()
                             if (view != null) windowManager.updateViewLayout(view, this@Service.layoutParams)
@@ -301,7 +236,8 @@ class Service : AccessibilityService() {
                                     } catch (e: Exception) {
                                         Log.w(TAG, "Failed to close system dialogs", e)
                                     }
-                                    expandPanel()
+                                    isExpanded = true
+                                    this@Service.handler.startIdleTimer()
                                 },
                             contentAlignment = androidx.compose.ui.Alignment.Center
                         ) {
@@ -368,40 +304,15 @@ class Service : AccessibilityService() {
             Log.i(TAG, "add view")
             // The view doesn't respond to input events if reused
             view = createView()
-            // 初始位置在屏幕右边缘外，alpha=1，准备滑入
-            val screenWidth = resources.displayMetrics.widthPixels
-            layoutParams.alpha = 1f
-            layoutParams.x = screenWidth
-            layoutParams.y = manager.buttonOffsetY.roundToInt()
+            layoutParams.alpha = 0f
             windowManager.addView(view, layoutParams)
         }
         
         isExpanded = false
 
-        // 如果视图已可见（如从面板折叠回按钮），立即设置按钮位置
-        if (viewVisible) {
-            panelAnimator?.cancel()
-            panelAnimator = null
-            layoutParams.x = manager.buttonOffsetX.roundToInt()
-            layoutParams.y = manager.buttonOffsetY.roundToInt()
-            layoutParams.alpha = 1f
-            if (view != null) windowManager.updateViewLayout(view, layoutParams)
-        }
-
         if (!viewVisible) {
-            Log.i(TAG, "animate in - slide from right")
-            // 确保起始位置在屏幕右边缘外
-            val screenWidth = resources.displayMetrics.widthPixels
-            val targetX = manager.buttonOffsetX.roundToInt()
-            layoutParams.alpha = 1f
-            layoutParams.x = screenWidth
-            layoutParams.y = manager.buttonOffsetY.roundToInt()
-            if (view != null) windowManager.updateViewLayout(view, layoutParams)
-            // 用 Handler.post 确保在首次 Compose 组合完成后再启动动画，
-            // 避免 Compose 初始化过程中的位置竞争
-            handler.post {
-                animateSlideX(screenWidth, targetX, ANIMATION_DURATION)
-            }
+            Log.i(TAG, "animate in")
+            animateAlpha(layoutParams.alpha, 1f, ANIMATION_DURATION)
             viewVisible = true
         }
 
@@ -435,51 +346,7 @@ class Service : AccessibilityService() {
                 }
 
                 layoutParams.alpha = to
-                if (view != null) windowManager.updateViewLayout(view, layoutParams)
-
-                onEnd?.invoke()
-            }
-
-            override fun onAnimationCancel(animation: Animator) {
-                canceled = true
-            }
-
-            override fun onAnimationRepeat(animation: Animator) {}
-        })
-
-        animator.start()
-        currentAnimator = animator
-    }
-
-    /**
-     * 水平滑动动画：将窗口 x 坐标从 fromX 动画移动到 toX
-     */
-    private fun animateSlideX(fromX: Int, toX: Int, duration: Long, onEnd: (() -> Unit)? = null) {
-        currentAnimator?.cancel()
-
-        val animator = ValueAnimator.ofInt(fromX, toX)
-        animator.duration = duration
-        animator.interpolator = AccelerateDecelerateInterpolator()
-
-        animator.addUpdateListener { animation ->
-            if (view != null) {
-                layoutParams.x = animation.animatedValue as Int
                 windowManager.updateViewLayout(view, layoutParams)
-            }
-        }
-
-        animator.addListener(object : Animator.AnimatorListener {
-            var canceled = false
-
-            override fun onAnimationStart(animation: Animator) {}
-
-            override fun onAnimationEnd(animation: Animator) {
-                if (canceled) {
-                    return
-                }
-
-                layoutParams.x = toX
-                if (view != null) windowManager.updateViewLayout(view, layoutParams)
 
                 onEnd?.invoke()
             }
